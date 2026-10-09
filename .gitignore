@@ -1,0 +1,9 @@
+dist/
+build/
+*.iso
+*.img
+*.qcow2
+sources/
+workspace/
+*.exe
+distroforge
