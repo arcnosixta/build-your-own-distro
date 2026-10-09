@@ -33,6 +33,8 @@ func main() {
 		os.Exit(runBuild())
 	case "run":
 		os.Exit(runVM())
+	case "iso":
+		os.Exit(runISO())
 	case "version", "--version":
 		fmt.Println("distroforge", version)
 	case "help", "-h", "--help":
@@ -52,6 +54,7 @@ Usage:
   distroforge init      scaffold the workspace (sources/, build/, rootfs/, iso/)
   distroforge build     compile mininit and pack the initramfs
   distroforge run       boot the image in QEMU
+  distroforge iso       build a bootable ISO with Limine
   distroforge version   print version
 `)
 }
@@ -208,12 +211,12 @@ func runInit() int {
 	}
 
 	files := map[string]string{
-		rootfsPath + "/etc/passwd": "root:x:0:0:root:/root:/bin/sh\n",
-		rootfsPath + "/etc/group":  "root:x:0:\n",
-		rootfsPath + "/etc/fstab":  "# <fs>      <mountpoint>  <type>  <options>  <dump> <pass>\nproc        /proc         proc    defaults   0      0\nsysfs       /sys          sysfs   defaults   0      0\ntmpfs       /run          tmpfs   mode=0755  0      0\n",
+		rootfsPath + "/etc/passwd":     "root:x:0:0:root:/root:/bin/sh\n",
+		rootfsPath + "/etc/group":      "root:x:0:\n",
+		rootfsPath + "/etc/fstab":      "# <fs>      <mountpoint>  <type>  <options>  <dump> <pass>\nproc        /proc         proc    defaults   0      0\nsysfs       /sys          sysfs   defaults   0      0\ntmpfs       /run          tmpfs   mode=0755  0      0\n",
 		rootfsPath + "/etc/os-release": "NAME=\"Minidistro\"\nID=minidistro\nVERSION=\"0.1\"\nPRETTY_NAME=\"Minidistro 0.1 (from-scratch)\"\nHOME_URL=\"https://github.com/arcnosixta/build-your-own-distro\"\n",
-		rootfsPath + "/etc/issue":  "Minidistro \\r \\l\n\n",
-		rootfsPath + "/etc/motd":   "Welcome to Minidistro — built from scratch.\nEdit /etc/profile to customize your shell.\n",
+		rootfsPath + "/etc/issue":      "Minidistro \\r \\l\n\n",
+		rootfsPath + "/etc/motd":       "Welcome to Minidistro — built from scratch.\nEdit /etc/profile to customize your shell.\n",
 		rootfsPath + "/etc/profile": "# /etc/profile — system-wide shell startup\n" +
 			"[ -r /etc/os-release ] && . /etc/os-release\n" +
 			"export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n" +
