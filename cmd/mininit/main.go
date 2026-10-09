@@ -72,8 +72,8 @@ type shellCandidate struct {
 }
 
 var shellCandidates = []shellCandidate{
-	{"/bin/sh", []string{"/bin/sh", "-i"}},
-	{"/bin/busybox", []string{"/bin/busybox", "sh", "-i"}},
+	{"/bin/sh", []string{"/bin/sh", "-l"}},
+	{"/bin/busybox", []string{"/bin/busybox", "sh", "-l"}},
 }
 
 func startShell() (int, error) {

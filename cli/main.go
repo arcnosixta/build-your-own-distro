@@ -210,7 +210,17 @@ func runInit() int {
 		rootfsPath + "/etc/passwd": "root:x:0:0:root:/root:/bin/sh\n",
 		rootfsPath + "/etc/group":  "root:x:0:\n",
 		rootfsPath + "/etc/fstab":  "# <fs>      <mountpoint>  <type>  <options>  <dump> <pass>\nproc        /proc         proc    defaults   0      0\nsysfs       /sys          sysfs   defaults   0      0\ntmpfs       /run          tmpfs   mode=0755  0      0\n",
+		rootfsPath + "/etc/os-release": "NAME=\"Minidistro\"\nID=minidistro\nVERSION=\"0.1\"\nPRETTY_NAME=\"Minidistro 0.1 (from-scratch)\"\nHOME_URL=\"https://github.com/arcnosixta/build-your-own-distro\"\n",
+		rootfsPath + "/etc/issue":  "Minidistro \\r \\l\n\n",
+		rootfsPath + "/etc/motd":   "Welcome to Minidistro — built from scratch.\nEdit /etc/profile to customize your shell.\n",
+		rootfsPath + "/etc/profile": "# /etc/profile — system-wide shell startup\n" +
+			"[ -r /etc/os-release ] && . /etc/os-release\n" +
+			"export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n" +
+			"export PS1='\\u@minidistro:\\w# '\n" +
+			"if [ -r /etc/motd ]; then while IFS= read -r line; do echo \"$line\"; done < /etc/motd; fi\n",
+		rootfsPath + "/root/.profile": "# ~/.profile — per-user startup (a login shell reads /etc/profile first)\n# Add personal aliases and environment tweaks here.\n",
 	}
+	createdFiles := 0
 	for path, content := range files {
 		if _, err := os.Stat(path); err == nil {
 			continue
@@ -223,10 +233,11 @@ func runInit() int {
 			fmt.Fprintf(os.Stderr, "init: %v\n", err)
 			return 1
 		}
+		createdFiles++
 	}
 
-	if created > 0 {
-		fmt.Printf("created %d directories and 3 base files in workspace/\n", created)
+	if created > 0 || createdFiles > 0 {
+		fmt.Printf("created %d directories and %d base files in workspace/\n", created, createdFiles)
 	} else {
 		fmt.Println("workspace/ already up to date")
 	}
