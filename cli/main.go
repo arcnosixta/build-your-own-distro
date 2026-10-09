@@ -186,6 +186,7 @@ func runInit() int {
 		rootfsPath + "/var/cache",
 		rootfsPath + "/var/log",
 		rootfsPath + "/var/lib",
+		rootfsPath + "/var/lib/pkg",
 	}
 
 	created := 0
@@ -251,19 +252,28 @@ func runBuild() int {
 		return 1
 	}
 
-	fmt.Println("stage 1/3: compile mininit (static linux/amd64)")
-	if !buildMininit() {
+	fmt.Println("stage 1/4: compile mininit (static linux/amd64)")
+	if !buildBinary("./cmd/mininit", filepath.Join("workspace", "build", "mininit")) {
 		return 1
 	}
 
-	fmt.Println("stage 2/3: install /sbin/init into rootfs")
+	fmt.Println("stage 2/4: compile pkg (static linux/amd64)")
+	if !buildBinary("./cmd/pkg", filepath.Join("workspace", "build", "pkg")) {
+		return 1
+	}
+
+	fmt.Println("stage 3/4: install binaries into rootfs")
 	if err := copyFile(filepath.Join("workspace", "build", "mininit"), filepath.Join(rootfsPath, "sbin", "init"), 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "build: %v\n", err)
 		return 1
 	}
-	fmt.Println("        installed rootfs/sbin/init")
+	if err := copyFile(filepath.Join("workspace", "build", "pkg"), filepath.Join(rootfsPath, "sbin", "pkg"), 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "build: %v\n", err)
+		return 1
+	}
+	fmt.Println("        installed rootfs/sbin/init and rootfs/sbin/pkg")
 
-	fmt.Println("stage 3/3: pack initramfs")
+	fmt.Println("stage 4/4: pack initramfs")
 	files, size, err := packInitramfs(rootfsPath, initrdPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "build: pack: %v\n", err)
@@ -279,14 +289,13 @@ func runBuild() int {
 	return 0
 }
 
-func buildMininit() bool {
-	out := filepath.Join("workspace", "build", "mininit")
-	cmd := exec.Command("go", "build", "-o", out, "./cmd/mininit")
+func buildBinary(pkg, out string) bool {
+	cmd := exec.Command("go", "build", "-o", out, pkg)
 	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64", "CGO_ENABLED=0")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "build: mininit: %v\n", err)
+		fmt.Fprintf(os.Stderr, "build: %s: %v\n", pkg, err)
 		return false
 	}
 	fmt.Println("        compiled", out)

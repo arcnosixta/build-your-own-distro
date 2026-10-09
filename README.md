@@ -23,7 +23,7 @@ Developers who want a mental model of the system they work on every day: where `
 | 03 | [Kernel: build it or borrow it](chapters/03-kernel.md) | ✅ |
 | 04 | [Init: your first process (PID 1) in Go](chapters/04-init.md) | ✅ |
 | 05 | [Userland: busybox to coreutils](chapters/05-userland.md) | ✅ |
-| 06 | [A package manager in 500 lines](chapters/06-packages.md) | 📝 |
+| 06 | [A package manager in 500 lines](chapters/06-packages.md) | ✅ |
 | 07 | [Bootloader and UEFI](chapters/07-bootloader.md) | 📝 |
 | 08 | [From rootfs to bootable ISO](chapters/08-iso.md) | 📝 |
 | 09 | [Updates: A/B slots and immutability](chapters/09-updates.md) | 📝 |
@@ -61,9 +61,10 @@ distroforge run      # boot the image in QEMU
 
 ## Status
 
-Working MVP. Chapters 00–05 are published, and the CLI builds and boots a real
+Working MVP. Chapters 00–06 are published, and the CLI builds and boots a real
 system: `distroforge build && distroforge run` drops you into a login shell on
-top of the Go init, all the way from an empty folder.
+top of the Go init, with a working package manager (`/sbin/pkg`) to install and
+track software — all the way from an empty folder.
 
 ## License
 
