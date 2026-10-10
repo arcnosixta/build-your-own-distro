@@ -24,13 +24,13 @@ Developers who want a mental model of the system they work on every day: where `
 | 04 | [Init: your first process (PID 1) in Go](chapters/04-init.md) | ✅ |
 | 05 | [Userland: busybox to coreutils](chapters/05-userland.md) | ✅ |
 | 06 | [A package manager in 500 lines](chapters/06-packages.md) | ✅ |
-| 07 | [Bootloader and UEFI](chapters/07-bootloader.md) | 📝 |
-| 08 | [From rootfs to bootable ISO](chapters/08-iso.md) | 📝 |
-| 09 | [Updates: A/B slots and immutability](chapters/09-updates.md) | 📝 |
-| 10 | [Hardening your distro](chapters/10-hardening.md) | 📝 |
-| 11 | [How the industry does it: mkosi, bootc, Universal Blue](chapters/11-industry.md) | 📝 |
+| 07 | Bootloader and UEFI | 📝 |
+| 08 | From rootfs to bootable ISO | 📝 |
+| 09 | Updates: A/B slots and immutability | 📝 |
+| 10 | Hardening your distro | 📝 |
+| 11 | How the industry does it: mkosi, bootc, Universal Blue | 📝 |
 
-✅ published · 📝 drafted next
+✅ published (linked above) · 📝 planned — links are added once the chapter lands
 
 ## Quick start
 
@@ -58,6 +58,9 @@ distroforge init     # scaffold the workspace for the current chapter
 distroforge build    # compile the Go init and pack the initramfs
 distroforge run      # boot the image in QEMU
 ```
+
+A `distroforge iso` command is planned for chapters 07–08 but is not
+implemented yet (it exits with an error today).
 
 ## Status
 

@@ -1,8 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 func runISO() int {
-	fmt.Println("iso: stub")
+	fmt.Fprintln(os.Stderr, "iso: not implemented yet — planned for chapters/08-iso.md")
 	return 1
 }
