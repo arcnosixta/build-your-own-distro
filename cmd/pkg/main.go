@@ -106,7 +106,61 @@ func saveDB(root string, db *database) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(dbPath(root), append(b, '\n'), 0o644)
+	b = append(b, '\n')
+
+	tmp := dbPath(root) + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o644); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, dbPath(root)); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return nil
+}
+
+// safeJoin resolves rel (a slash-separated path from a package archive) under
+// root and refuses anything that would escape root, such as "../../etc/passwd"
+// or an absolute path. It is the guard against archive path traversal.
+func safeJoin(root, rel string) (string, error) {
+	target := filepath.Join(root, filepath.FromSlash(rel))
+	within, err := filepath.Rel(root, target)
+	if err != nil {
+		return "", fmt.Errorf("invalid path %q: %w", rel, err)
+	}
+	if within == ".." || strings.HasPrefix(within, ".."+string(filepath.Separator)) || filepath.IsAbs(within) {
+		return "", fmt.Errorf("refusing path outside root: %q", rel)
+	}
+	return target, nil
+}
+
+// ensureInsideRoot verifies that p, after resolving symlinks, is still inside
+// root. This stops a package from shipping a symlink (e.g. files/evil -> /etc)
+// and then writing through it to escape the target root.
+func ensureInsideRoot(root, p string) error {
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return err
+	}
+	realP, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		return err
+	}
+	within, err := filepath.Rel(realRoot, realP)
+	if err != nil {
+		return err
+	}
+	if within == ".." || strings.HasPrefix(within, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("path escapes root via symlink: %s", p)
+	}
+	return nil
+}
+
+// storedPath maps an absolute path recorded in the database (e.g.
+// "/usr/bin/hello") back to a path inside root, applying the same traversal
+// guard as package extraction.
+func storedPath(root, abs string) (string, error) {
+	return safeJoin(root, strings.TrimPrefix(filepath.ToSlash(abs), "/"))
 }
 
 func cmdBuild(argv []string) int {
@@ -248,11 +302,19 @@ func cmdInstall(argv []string) int {
 			continue
 		}
 		rel := strings.TrimPrefix(filepath.ToSlash(hdr.Name), "files/")
-		target := filepath.Join(*root, filepath.FromSlash(rel))
+		target, err := safeJoin(*root, rel)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "pkg install:", err)
+			return 1
+		}
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(target, os.FileMode(hdr.Mode)&0o777); err != nil {
+				fmt.Fprintln(os.Stderr, "pkg install:", err)
+				return 1
+			}
+			if err := ensureInsideRoot(*root, target); err != nil {
 				fmt.Fprintln(os.Stderr, "pkg install:", err)
 				return 1
 			}
@@ -262,12 +324,20 @@ func cmdInstall(argv []string) int {
 				fmt.Fprintln(os.Stderr, "pkg install:", err)
 				return 1
 			}
+			if err := ensureInsideRoot(*root, filepath.Dir(target)); err != nil {
+				fmt.Fprintln(os.Stderr, "pkg install:", err)
+				return 1
+			}
 			os.Remove(target)
 			if err := os.Symlink(hdr.Linkname, target); err != nil {
 				fmt.Fprintf(os.Stderr, "pkg install: symlink %s skipped: %v\n", rel, err)
 			}
 		default:
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+				fmt.Fprintln(os.Stderr, "pkg install:", err)
+				return 1
+			}
+			if err := ensureInsideRoot(*root, filepath.Dir(target)); err != nil {
 				fmt.Fprintln(os.Stderr, "pkg install:", err)
 				return 1
 			}
@@ -302,8 +372,11 @@ func cmdInstall(argv []string) int {
 	}
 	if old, ok := db.Packages[man.Name]; ok {
 		for _, f := range old.Files {
-			if !seen[f] {
-				os.Remove(filepath.Join(*root, filepath.FromSlash(f)))
+			if seen[f] {
+				continue
+			}
+			if p, err := storedPath(*root, f); err == nil {
+				os.Remove(p)
 			}
 		}
 	}
@@ -342,7 +415,9 @@ func cmdRemove(argv []string) int {
 		return 1
 	}
 	for _, f := range e.Files {
-		os.Remove(filepath.Join(*root, filepath.FromSlash(f)))
+		if p, err := storedPath(*root, f); err == nil {
+			os.Remove(p)
+		}
 	}
 	delete(db.Packages, name)
 	if err := saveDB(*root, db); err != nil {
@@ -450,23 +525,24 @@ func writeTarFile(tw *tar.Writer, name string, data []byte, mode os.FileMode, mt
 
 func streamTarFile(tw *tar.Writer, name string, mode os.FileMode, mtime time.Time, r io.Reader) error {
 	st, ok := r.(interface{ Stat() (os.FileInfo, error) })
-	var size int64
-	if ok {
-		if fi, err := st.Stat(); err == nil {
-			size = fi.Size()
-		}
+	if !ok {
+		return fmt.Errorf("cannot determine size for %s", name)
+	}
+	fi, err := st.Stat()
+	if err != nil {
+		return fmt.Errorf("stat %s: %w", name, err)
 	}
 	hdr := &tar.Header{
 		Name:     name,
 		Mode:     int64(mode) & 0o777,
-		Size:     size,
+		Size:     fi.Size(),
 		ModTime:  mtime,
 		Typeflag: tar.TypeReg,
 	}
 	if err := tw.WriteHeader(hdr); err != nil {
 		return err
 	}
-	_, err := io.CopyN(tw, r, size)
+	_, err = io.CopyN(tw, r, fi.Size())
 	return err
 }
 
