@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" width="120" alt="Distroforge logo">
+</p>
+
 # Build Your Own Linux Distro
 
 > A hands-on course + Go CLI that takes you from an empty folder to a bootable Linux distribution — and explains every layer you just built.
